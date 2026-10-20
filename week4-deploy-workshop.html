@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Workshop Week 4 · Deploy เว็บด้วย Firebase และ Vercel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@300..700&family=Lexend:wght@400..700&family=JetBrains+Mono:wght@400..700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#FBEEE4; --bg-alt:#F3E1D3; --surface:#FFFAF5; --ink:#1A1714; --muted:#5A5048; --line:#E2CDBD;
+  --blue:#1F5FD6; --red:#C8201A; --yellow:#FFD45C; --purple:#7A5A82;
+  --term-bg:#161412; --term-ink:#F3EDE7; --term-dim:#9A8F86; --term-cmd:#FFD45C; --term-q:#8CB8FF; --term-a:#FF9D8A; --term-ok:#9BD48C;
+  --why-bg:#E6EEFC; --why-ink:#17407F; --result-bg:#FFF3C9; --result-ink:#5C4500; --warn-bg:#FBE1DD; --warn-ink:#8A1712;
+  --sans:'Anuphan', Tahoma, 'Noto Sans Thai', sans-serif; --display:'Lexend', 'Anuphan', Arial, sans-serif; --mono:'JetBrains Mono', Consolas, 'Courier New', monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#1B1815; --bg-alt:#25201C; --surface:#221E1A; --ink:#F3EADF; --muted:#BFB2A6; --line:#3A322C;
+    --blue:#8CB0FF; --red:#FF8A7A; --yellow:#FFD45C; --purple:#C9A8D1;
+    --term-bg:#0F0D0C;
+    --why-bg:#1C2A44; --why-ink:#C9DAFF; --result-bg:#3A3015; --result-ink:#FFE7A0; --warn-bg:#411D19; --warn-ink:#FFC2B8;
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-behavior:smooth; scroll-padding-top:calc(env(safe-area-inset-top,0px) + 72px)}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans); font-size:18px; line-height:1.75; -webkit-text-size-adjust:100%}
+a{color:var(--blue)}
+:focus-visible{outline:3px solid var(--blue); outline-offset:3px; border-radius:6px}
+code{font-family:var(--mono); font-size:.88em; background:var(--bg-alt); padding:.1em .4em; border-radius:6px; overflow-wrap:anywhere}
+
+/* progress */
+.topbar{position:sticky; top:0; z-index:20; background:var(--bg); border-bottom:2px solid var(--ink); padding:12px 20px; display:flex; align-items:center; gap:16px; padding-top:calc(12px + env(safe-area-inset-top,0px))}
+body::before{content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top,0px); background:var(--bg); z-index:30}
+.topbar .course{font-family:var(--display); font-weight:600; font-size:15px; white-space:nowrap}
+.bar{flex:1; height:12px; background:var(--bg-alt); border:2px solid var(--ink); border-radius:999px; overflow:hidden}
+.bar span{display:block; height:100%; width:0; background:var(--yellow); transition:width .3s}
+.count{font-family:var(--mono); font-size:14px; white-space:nowrap}
+
+/* layout */
+.wrap{max-width:1180px; margin:0 auto; padding:0 20px; display:grid; grid-template-columns:1fr; gap:40px}
+@media (min-width:1080px){ .wrap{grid-template-columns:240px minmax(0,1fr)} }
+nav.toc{display:none}
+@media (min-width:1080px){
+  nav.toc{display:block; position:sticky; top:96px; align-self:start; padding-top:48px; font-size:15px; line-height:1.5}
+  nav.toc ol{list-style:none; margin:0; padding:0}
+  nav.toc li{margin:0 0 6px}
+  nav.toc a{color:var(--muted); text-decoration:none; display:flex; gap:8px; padding:4px 8px; border-radius:8px}
+  nav.toc a:hover{background:var(--bg-alt); color:var(--ink)}
+  nav.toc a.done{color:var(--ink)}
+  nav.toc a.done::after{content:"✓"; margin-left:auto; color:var(--blue); font-weight:700}
+  nav.toc .grp{font-family:var(--display); font-weight:600; color:var(--ink); margin:20px 0 6px 8px; font-size:14px}
+}
+main{min-width:0; padding-bottom:96px}
+
+/* hero */
+.hero{padding:56px 0 32px; border-bottom:2px solid var(--ink)}
+.hero .sub{font-size:17px; color:var(--muted); margin:0 0 12px}
+.hero h1{font-family:var(--display); font-weight:500; font-size:clamp(40px,7vw,76px); line-height:1.02; letter-spacing:-.02em; margin:0 0 24px}
+.hero p.lead{font-size:20px; max-width:62ch; margin:0 0 28px}
+.routes{display:grid; gap:16px; grid-template-columns:1fr}
+@media (min-width:720px){.routes{grid-template-columns:1fr 1fr}}
+.route{border:2px solid var(--ink); border-radius:20px; padding:20px 22px; background:var(--surface)}
+.route h2{font-family:var(--display); font-size:20px; margin:0 0 10px}
+.route .chain{display:flex; flex-wrap:wrap; align-items:center; gap:6px; font-size:15px}
+.route .chain span{background:var(--bg-alt); padding:4px 10px; border-radius:999px}
+.route .chain i{font-style:normal; color:var(--muted)}
+.route.fb{box-shadow:6px 6px 0 var(--yellow)}
+.route.vc{box-shadow:6px 6px 0 var(--blue)}
+.legend{display:flex; flex-wrap:wrap; gap:12px 20px; margin:28px 0 0; font-size:15px}
+.legend b{display:inline-block; padding:2px 10px; border-radius:999px; margin-right:6px; font-weight:600}
+
+/* parts */
+.part{padding-top:56px}
+.part-head{display:flex; gap:18px; align-items:baseline; border-bottom:2px solid var(--ink); padding-bottom:16px; margin-bottom:8px}
+.part-head .tag{font-family:var(--display); font-weight:700; font-size:15px; padding:4px 12px; border-radius:999px; background:var(--ink); color:var(--bg); white-space:nowrap}
+.part-head h2{font-family:var(--display); font-weight:600; font-size:clamp(28px,4vw,40px); line-height:1.15; margin:0}
+.part-intro{color:var(--muted); max-width:66ch; margin:16px 0 8px}
+h3.sub-part{font-family:var(--display); font-size:22px; margin:40px 0 0; padding:10px 0; border-bottom:1px dashed var(--line)}
+
+/* step */
+.step{display:grid; grid-template-columns:56px minmax(0,1fr); gap:0 20px; padding:32px 0; border-bottom:1px solid var(--line)}
+.step .num{font-family:var(--display); font-weight:600; font-size:22px; width:56px; height:56px; border:2px solid var(--ink); border-radius:50%; display:grid; place-items:center; background:var(--surface); transition:background .2s}
+.step.is-done .num{background:var(--yellow); color:#1A1714}
+.step h4{font-family:var(--display); font-size:24px; line-height:1.3; margin:10px 0 12px}
+.step .body > p{margin:0 0 14px; max-width:68ch}
+.step ol.do{margin:0 0 14px; padding-left:1.3em}
+.step ol.do li{margin-bottom:6px}
+
+.box{border-radius:14px; padding:14px 18px; margin:14px 0; max-width:72ch}
+.box .lab{font-weight:700; display:block; margin-bottom:2px}
+.box p{margin:0}
+.box p + p{margin-top:8px}
+.why{background:var(--why-bg); color:var(--why-ink)}
+.result{background:var(--result-bg); color:var(--result-ink)}
+.warn{background:var(--warn-bg); color:var(--warn-ink); border:2px solid currentColor}
+.why code,.result code,.warn code{background:rgba(255,255,255,.45)}
+@media (prefers-color-scheme: dark){ .why code,.result code,.warn code{background:rgba(0,0,0,.3)} }
+
+/* terminal */
+.term{position:relative; background:var(--term-bg); color:var(--term-ink); border-radius:14px; margin:14px 0; overflow:hidden}
+.term .tbar{display:flex; justify-content:space-between; align-items:center; padding:8px 14px; font-family:var(--mono); font-size:12px; color:var(--term-dim); border-bottom:1px solid #2C2622}
+.term pre{margin:0; padding:16px 18px; overflow-x:auto; font-family:var(--mono); font-size:15px; line-height:1.65}
+.term .c{color:var(--term-dim)} .term .k{color:var(--term-cmd)} .term .q{color:var(--term-q)} .term .a{color:var(--term-a)} .term .ok{color:var(--term-ok)}
+.copy{font-family:var(--sans); font-size:13px; background:transparent; color:var(--term-ink); border:1px solid #4A423C; border-radius:8px; padding:3px 10px; cursor:pointer}
+.copy:hover{background:#2C2622}
+.copy.copied{border-color:var(--term-ok); color:var(--term-ok)}
+.term.out{background:transparent; color:var(--result-ink); border:2px dashed var(--result-ink)}
+.term.out .tbar{color:var(--result-ink); border-bottom:1px dashed var(--result-ink)}
+.term.out .ok{color:inherit; font-weight:700}
+
+/* answers table */
+.tbl{overflow-x:auto; margin:14px 0}
+table{border-collapse:collapse; width:100%; min-width:560px; font-size:16px; line-height:1.55; background:var(--surface)}
+th,td{border:1.5px solid var(--ink); padding:10px 12px; text-align:left; vertical-align:top}
+th{background:var(--ink); color:var(--bg); font-weight:600}
+td code{white-space:nowrap}
+
+.tree{font-family:var(--mono); font-size:15px; line-height:1.6; background:var(--surface); border:2px solid var(--ink); border-radius:14px; padding:14px 18px; margin:14px 0; overflow-x:auto; white-space:pre}
+
+.check{display:inline-flex; align-items:center; gap:10px; margin-top:10px; font-weight:600; cursor:pointer; user-select:none; padding:8px 14px; border:2px solid var(--ink); border-radius:999px; background:var(--surface)}
+.check input{width:20px; height:20px; accent-color:var(--blue); margin:0}
+.step.is-done .check{background:var(--yellow); color:#1A1714}
+
+/* submit */
+.submit{margin-top:56px; background:var(--ink); color:var(--bg); border-radius:24px; padding:32px clamp(20px,4vw,44px)}
+.submit h2{font-family:var(--display); font-size:32px; margin:0 0 16px}
+.submit ol{padding-left:1.3em; margin:0}
+.submit li{margin-bottom:10px}
+.submit code{background:#3A322C; color:var(--yellow)}
+@media (prefers-color-scheme: dark){ .submit{background:var(--bg-alt); color:var(--ink)} .submit code{background:#110F0D} }
+.ph{background:var(--yellow); color:#1A1714; padding:0 6px; border-radius:4px}
+
+footer{border-top:2px solid var(--ink); margin-top:56px; padding:20px 0; display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px; font-size:15px; color:var(--muted)}
+.reset{font-family:var(--sans); font-size:14px; background:none; border:1.5px solid var(--muted); color:var(--muted); border-radius:999px; padding:4px 12px; cursor:pointer}
+
+@media (max-width:560px){
+  body{font-size:17px}
+  .step{grid-template-columns:1fr}
+  .step .num{width:46px; height:46px; font-size:18px}
+  .topbar .course{display:none}
+}
+@media print{
+  .topbar,nav.toc,.copy,.check,.reset{display:none}
+  .term{border:1px solid #000}
+  body{background:#fff}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar" role="status" aria-live="polite">
+  <span class="course">Workshop Week 4</span>
+  <div class="bar" aria-hidden="true"><span id="barFill"></span></div>
+  <span class="count" id="count">0 / 0 ขั้น</span>
+</div>
+
+<div class="wrap">
+<nav class="toc" aria-label="สารบัญ">
+  <ol id="tocList"></ol>
+</nav>
+
+<main>
+<header class="hero">
+  <p class="sub">GAD23867-1 Creative coding · Week 4 · WEBSITE DESIGN : Deployment #4</p>
+  <h1>เอาเว็บของเรา<br>ขึ้นอินเทอร์เน็ต</h1>
+  <p class="lead">Workshop นี้พาทำทีละขั้น ตั้งแต่เตรียมโฟลเดอร์จนได้ลิงก์ที่เปิดบนมือถือได้จริง ใช้เว็บชุดเดียวกัน Deploy 2 แบบ ทุกขั้นบอกทั้ง <b>สิ่งที่ต้องทำ</b> <b>เหตุผลที่ทำ</b> และ <b>ผลที่ควรเห็น</b> ทำเสร็จแต่ละขั้นให้ติ๊กช่อง "ทำขั้นนี้เสร็จแล้ว" เพื่อเก็บความคืบหน้า</p>
+  <div class="routes">
+    <div class="route fb">
+      <h2>แบบที่ 1 · Firebase Hosting</h2>
+      <div class="chain"><span>เครื่องเรา</span><i>→</i><span>firebase deploy</span><i>→</i><span>.web.app</span></div>
+    </div>
+    <div class="route vc">
+      <h2>แบบที่ 2 · Vercel</h2>
+      <div class="chain"><span>เครื่องเรา</span><i>→</i><span>GitHub</span><i>→</i><span>Auto Deploy</span><i>→</i><span>.vercel.app</span></div>
+    </div>
+  </div>
+  <div class="legend">
+    <span><b style="background:var(--why-bg);color:var(--why-ink)">ทำไม</b>เหตุผลของขั้นนั้น</span>
+    <span><b style="background:var(--result-bg);color:var(--result-ink)">ผลที่ควรเห็น</b>ใช้ตรวจว่าทำถูก</span>
+    <span><b style="background:var(--warn-bg);color:var(--warn-ink)">ระวัง</b>จุดที่ผิดกันบ่อย</span>
+  </div>
+</header>
+
+<!-- ================= PART 0 ================= -->
+<section class="part" id="part0" data-group="ส่วนที่ 0 · เตรียมตัว">
+  <div class="part-head"><span class="tag">ส่วนที่ 0</span><h2>เตรียมโปรเจกต์และเครื่องมือ</h2></div>
+  <p class="part-intro">ทำส่วนนี้ครั้งเดียว ใช้ร่วมกันทั้งสองแบบ ถ้าเว็บพังตั้งแต่ในเครื่อง ขึ้น Server ไปก็จะพังเหมือนเดิม จึงต้องเตรียมให้เรียบร้อยก่อน</p>
+
+  <article class="step" id="s0-1" data-title="สร้างโฟลเดอร์ my-site">
+    <div class="num">0.1</div>
+    <div class="body">
+      <h4>สร้างโฟลเดอร์ my-site และจัดไฟล์ให้เป็นระเบียบ</h4>
+      <p>สร้างโฟลเดอร์ใหม่ชื่อ <code>my-site</code> แล้ว copy งาน Responsive จาก Week 3 มาใส่ จัดไฟล์ให้ได้โครงสร้างแบบนี้</p>
+      <div class="tree">my-site/
+├── index.html
+├── css/
+│   └── style.css
+└── images/
+    └── hero.jpg</div>
+      <div class="box why"><span class="lab">ทำไม</span><p>Hosting จะอัปโหลด "ทั้งโฟลเดอร์" ขึ้นไป ไฟล์ที่อยู่นอกโฟลเดอร์นี้ เช่น รูปที่ยังค้างอยู่ใน Downloads จะไม่ถูกส่งขึ้นไปด้วย การเก็บทุกอย่างไว้ในโฟลเดอร์เดียวจึงเป็นการบอกว่า "นี่คือเว็บทั้งหมดของเรา"</p></div>
+      <div class="box result"><span class="lab">ผลที่ควรเห็น</span><p>เปิดโฟลเดอร์ my-site แล้วเห็นไฟล์และโฟลเดอร์ย่อยครบ ไม่มีไฟล์เว็บอยู่ข้างนอก</p></div>
+      <label class="check"><input type="checkbox"> ทำขั้นนี้เสร็จแล้ว</label>
+    </div>
+  </article>
+
+  <article class="step" id="s0-2" data-title="หน้าแรกชื่อ index.html">
+    <div class="num">0.2</div>
+    <div class="body">
+      <h4>ตั้งชื่อหน้าแรกเป็น index.html</h4>
+      <p>ถ้าหน้าแรกชื่ออื่น เช่น <code>home.html</code> ให้เปลี่ยนชื่อเป็น <code>index.html</code> แล้วแก้ลิงก์ที่ชี้ไปหน้านี้ให้ตรงด้วย</p>
+      <div class="box why"><span class="lab">ทำไม</span><p>เมื่อมีคนเปิด <code>https://ชื่อเว็บ.web.app</code> โดยไม่ระบุไฟล์ Server จะหาไฟล์ชื่อ <code>index.html</code> มาแสดงเป็นหน้าแรกโดยอัตโนมัติ ถ้าไม่มีไฟล์นี้ จะเจอหน้า 404 Not Found</p></div>
+      <div class="box warn"><span class="lab">ระวัง</span><p>Windows มักซ่อนนามสกุลไฟล์ ไฟล์ที่เห็นว่า index.html อาจเป็น <code>index.html.txt</code> ให้เปิด File Explorer → View → ติ๊ก File name extensions เพื่อตรวจ</p></div>
+      <label class="check"><input type="checkbox"> ทำขั้นนี้เสร็จแล้ว</label>
+    </div>
+  </article>
+
+  <article class="step" id="s0-3" data-title="ตรวจ path และชื่อไฟล์">
+    <div class="num">0.3</div>
+    <div class="body">
+      <h4>ตรวจ path และชื่อไฟล์ทุกไฟล์</h4>
+      <ol class="do">
+        <li>ทุก <code>src</code> และ <code>href</code> ต้องเป็น path แบบ relative เช่น <code>images/hero.jpg</code> ห้ามเป็น <code>C:\Users\...</code></li>
+        <li>ชื่อไฟล์ใช้ตัวพิมพ์เล็ก ไม่มีเว้นวรรค ไม่มีภาษาไทย เช่น <code>cat-01.jpg</code></li>
+        <li>ชื่อใน code ต้องตรงกับชื่อไฟล์จริงทุกตัวอักษร รวมถึงนามสกุล <code>.jpg</code> กับ <code>.JPG</code></li>
+      </ol>
+      <div class="box why"><span class="lab">ทำไม</span><p>บน Server ไม่มีไดรฟ์ <code>C:\</code> ของเรา path แบบเต็มจึงหาไฟล์ไม่เจอ ส่วน path แบบ relative หาไฟล์จากตำแหน่งของหน้าเว็บเอง จึงใช้ได้ทุกที่</p><p>Windows มองว่า <code>Cat.jpg</code> กับ <code>cat.jpg</code> เป็นไฟล์เดียวกัน แต่ Server ส่วนใหญ่ถือว่าเป็นคนละไฟล์ นี่คือสาเหตุอันดับหนึ่งที่ "ในเครื่องรูปขึ้น แต่ขึ้นเว็บแล้วรูปหาย"</p></div>
+      <label class="check"><input type="checkbox"> ทำขั้นนี้เสร็จแล้ว</label>
+    </div>
+  </article>
+
+  <article class="step" id="s0-4" data-title="ทดสอบด้วย Live Server">
+    <div class="num">0.4</div>
+    <div class="body">
+      <h4>ทดสอบในเครื่องด้วย Live Server และ Console</h4>
+      <ol class="do">
+        <li>ใน VS Code เลือก File → Open Folder → เลือกโฟลเดอร์ <code>my-site</code></li>
+        <li>เปิด <code>index.html</code> แล้วกด <b>Go Live</b> มุมขวาล่าง</li>
+        <li>ในเบราว์เซอร์กด <code>F12</code> → แท็บ Console</li>
+      </ol>
+      <div class="box why"><span class="lab">ทำไม</span><p>Live Server เปิดเว็บผ่าน <code>http://</code> คล้ายกับ Server จริงมากกว่าการดับเบิลคลิกไฟล์ ข้อความสีแดงใน Console คือไฟล์ที่หาไม่เจอหรือโค้ดที่ผิด แก้ตอนนี้ง่ายกว่าแก้หลังขึ้นเว็บแล้ว</p></div>
+      <div class="box result"><span class="lab">ผลที่ควรเห็น</span><p>ทุกรูปและสไตล์แสดงครบ Console ไม่มีข้อความสีแดง (เช่น <code>404 (Not Found)</code>)</p></div>
+      <label class="check"><input type="checkbox"> ทำขั้นนี้เสร็จแล้ว</label>
+    </div>
+  </article>
+
+  <article class="step" id="s0-5" data-title="ติดตั้ง Node.js">
+    <div class="num">0.5</div>
+    <div class="body">
+      <h4>ติดตั้ง Node.js และเปิด Terminal ใน VS Code</h4>
+      <ol class="do">
+        <li>ไปที่ <a href="https://nodejs.org" target="_blank" rel="noopener">nodejs.org</a> ดาวน์โหลดเวอร์ชัน <b>LTS</b> แล้วติดตั้งตามค่าเริ่มต้น</li>
+        <li><b>ปิด VS Code แล้วเปิดใหม่</b> จากนั้นเปิด Terminal: เมนู Terminal → New Terminal</li>
+        <li>พิมพ์คำสั่งตรวจสอบ</li>
+      </ol>
+      <div class="term"><div class="tbar"><span>Terminal</span><button class="copy" type="button">คัดลอก</button></div><pre><span class="k">node</span> -v
+<span class="k">npm</span> -v</pre></div>
+      <div class="box why"><span class="lab">ทำไม</span><p>เครื่องมือ Deploy ของทั้ง Firebase และ Vercel แจกจ่ายผ่าน <b>npm</b> ซึ่งเป็นตัวติดตั้งโปรแกรมที่มากับ Node.js ต้องปิดเปิด VS Code ใหม่เพื่อให้ Terminal รู้จักคำสั่งที่เพิ่งติดตั้ง</p></div>
+      <div class="box result"><span class="lab">ผลที่ควรเห็น</span><p>ขึ้นเลขเวอร์ชันทั้งสองบรรทัด เช่น <code>v22.x.x</code> และ <code>10.x.x</code> (ตัวเลขจริงขึ้นกับรุ่นที่ติดตั้ง)</p></div>
+      <div class="box warn"><span class="lab">ระวัง</span><p>ถ้าขึ้น <code>running scripts is disabled on this system</code> ให้กดลูกศร ˅ ข้างเครื่องหมาย + ในแผง Terminal แล้วเลือก <b>Command Prompt</b> แทน PowerShell</p></div>
+      <label class="check"><input type="checkbox"> ทำขั้นนี้เสร็จแล้ว</label>
+    </div>
+  </article>
+</section>
+
+<!-- ================= PART 1 ================= -->
+<section class="part" id="part1" data-group="แบบที่ 1 · Firebase">
+  <div class="part-head"><span class="tag">แบบที่ 1</span><h2>Deploy ด้วย Firebase Hosting</h2></div>
+  <p class="part-intro">อัปโหลดจากเครื่องเราขึ้น Server ของ Google โดยตรงผ่าน Firebase CLI ได้ลิงก์ <code>ชื่อโปรเจกต์.web.app</code></p>
+
+  <article class="step" id="s1-1" data-title="ติดตั้ง Firebase CLI">
+    <div class="num">1.1</div>
+    <div class="body">
+      <h4>ติดตั้ง Firebase CLI</h4>
+      <div class="term"><div class="tbar"><span>Terminal</span><button class="copy" type="button">คัดลอก</button></div><pre><span class="k">npm</span> install -g firebase-tools
+<span class="k">firebase</span> --version</pre></div>
+      <div class="box why"><span class="lab">ทำไม</span><p>CLI (Command Line Interface) คือโปรแกรมที่สั่งงานด้วยการพิมพ์คำสั่ง <code>firebase-tools</code> ทำให้เราสั่ง Firebase จาก Terminal ได้ ส่วน <code>-g</code> (global) ทำให้ใช้คำสั่ง <code>firebase</code> ได้จากทุกโฟลเดอร์ ติดตั้งครั้งเดียวต่อเครื่อง</p></div>
+      <div class="box result"><span class="lab">ผลที่ควรเห็น</span><p>คำสั่งที่สองแสดงเลขเวอร์ชันของ Firebase CLI</p></div>
+      <label class="check"><input type="checkbox"> ทำขั้นนี้เสร็จแล้ว</label>
+    </div>
+  </article>
+
+  <article class="step" id="s1-2" data-title="firebase login">
+    <div class="num">1.2</div>
+    <div class="body">
+      <h4>Login ด้วยบัญชี Google</h4>
+      <div class="term"><div class="tbar"><span>Terminal</span><button class="copy" type="button">คัดลอก</button></div><pre><span class="k">firebase</span> login</pre></div>
+      <p>ถ้ามีคำถามเรื่องส่งข้อมูลการใช้งาน ตอบ <code>n</code> ได้ จากนั้นเบราว์เซอร์จะเปิดขึ้นมา ให้เลือกบัญชี Google แล้วกด Allow</p>
+      <div class="box why"><span class="lab">ทำไม</span><p>CLI ต้องรู้ว่าเราเป็นใคร และได้รับอนุญาตให้อัปโหลดไฟล์เข้าโปรเจกต์ในบัญชีของเรา เหมือนการ Login ก่อนอัปโหลดรูปขึ้น Facebook</p></div>
+      <div class="box result"><span class="lab">ผลที่ควรเห็น</span><p>Terminal ขึ้นข้อความ <code>Success! Logged in as อีเมลของเรา</code></p></div>
+      <label class="check"><input type="checkbox"> ทำขั้นนี้เสร็จแล้ว</label>
+    </div>
+  </article>
+
+  <article class="step" id="s1-3" data-title="สร้างโปรเจกต์ใน Console">
+    <div class="num">1.3</div>
+    <div class="body">
+      <h4>สร้างโปรเจกต์ใน Firebase Console</h4>
+      <ol class="do">
+        <li>เข้า <a href="https://console.firebase.google.com" target="_blank" rel="noopener">console.firebase.google.com</a> ด้วยบัญชีเดียวกับขั้น 1.2</li>
+        <li>กด Create a project ตั้งชื่อ เช่น <code>gad-ชื่อเล่นภาษาอังกฤษ</code></li>
+        <li>ขั้น Google Analytics ปิดได้ แล้วกดสร้างจนเสร็จ</li>
+        <li>จด <b>Project ID</b> ไว้ (ดูได้ใต้ชื่อโปรเจกต์ หรือที่ Project settings)</li>
+      </ol>
+      <div class="box why"><span class="lab">ทำไม</span><p>โปรเจกต์คือ "พื้นที่ของเรา" บน Server ของ Google Project ID ต้องไม่ซ้ำกับใครในโลก และจะกลายเป็นชื่อในลิงก์เว็บ <code>https://project-id.web.app</code> เปลี่ยนภายหลังไม่ได้ จึงควรตั้งให้สื่อความหมาย</p></div>
+      <div class="box result"><span class="lab">ผลที่ควรเห็น</span><p>เข้าหน้า Dashboard ของโปรเจกต์ได้ และรู้ Project ID ของตัวเอง</p></div>
+      <div class="box warn"><span class="lab">ระวัง</span><p>หน้าตา Console เปลี่ยนบ่อย ถ้าปุ่มไม่ตรงกับคำอธิบาย ให้มองหาคำว่า Create หรือ Add project บัญชีของมหาวิทยาลัยบางแห่งถูกปิดสิทธิ์ Firebase ถ้าสร้างไม่ได้ให้ใช้บัญชี Gmail ส่วนตัว</p></div>
+      <label class="check"><input type="checkbox"> ทำขั้นนี้เสร็จแล้ว</label>
+    </div>
+  </article>
+
+  <article class="step" id="s1-4" data-title="firebase init hosting">
+    <div class="num">1.4</div>
+    <div class="body">
+      <h4>เชื่อมโฟลเดอร์กับโปรเจกต์ด้วย firebase init</h4>
+      <p>ตรวจให้แน่ใจว่า Terminal อยู่ในโฟลเดอร์ <code>my-site</code> (ถ้าเปิดโฟลเดอร์นี้ใน VS Code ไว้แล้ว Terminal จะอยู่ในนั้นอยู่แล้ว) จากนั้นสั่ง</p>
+      <div class="term"><div class="tbar"><span>Terminal</span><button class="copy" type="button">คัดลอก</button></div><pre><span class="k">firebase</span> init hosting</pre></div>
+      <p>ใช้ลูกศรขึ้นลงเพื่อเลือก กด Enter เพื่อยืนยัน แล้วตอบตามตารางนี้</p>
+      <div class="tbl"><table>
+        <tr><th style="width:38%">คำถาม</th><th style="width:20%">ตอบ</th><th>ทำไมตอบแบบนี้</th></tr>
+        <tr><td>Please select an option</td><td><code>Use an existing project</code></td><td>เราสร้างโปรเจกต์ไว้แล้วในขั้น 1.3</td></tr>
+        <tr><td>Select a default Firebase project</td><td>Project ID ของเรา</td><td>บอกว่าโฟลเดอร์นี้จะส่งขึ้นโปรเจกต์ไหน</td></tr>
+        <tr><td>What do you want to use as your public directory?</td><td><code>.</code> (จุด)</td><td>จุดแปลว่า "โฟลเดอร์ปัจจุบัน" คืออัปโหลดทั้ง my-site ที่มี index.html อยู่</td></tr>
+        <tr><td>Configure as a single-page app?</td><td><code>No</code></td><td>เว็บเรามีหลายหน้าเป็นไฟล์จริง ถ้าตอบ Yes ทุกลิงก์ที่หาไม่เจอจะถูกส่งกลับไปหน้าแรก</td></tr>
+        <tr><td>Set up automatic builds and deploys with GitHub?</td><td><code>No</code></td><td>วันนี้เราใช้ Auto Deploy กับ Vercel ในแบบที่ 2</td></tr>
+        <tr><td>File ./index.html already exists. Overwrite?</td><td><code>No</code> เสมอ</td><td>ถ้าตอบ Yes หน้าเว็บของเราจะถูกแทนด้วยหน้าตัวอย่างของ Firebase</td></tr>
+      </table></div>
+      <div class="box why"><span class="lab">ทำไม</span><p><code>firebase init</code> ไม่ได้อัปโหลดอะไร มันแค่สร้างไฟล์ตั้งค่าเพื่อ "ผูก" โฟลเดอร์ในเครื่องเข้ากับโปรเจกต์บน Server ทำครั้งเดียวต่อโฟลเดอร์</p></div>
+      <div class="box result"><span class="lab">ผลที่ควรเห็น</span><p>Terminal ขึ้น <code>Firebase initialization complete!</code> และใน my-site มีไฟล์ใหม่ <code>firebase.json</code> กับ <code>.firebaserc</code> (อาจมี <code>404.html</code> เพิ่มมาด้วย ปล่อยไว้ได้)</p></div>
+      <div class="box warn"><span class="lab">ระวัง</span><p>ข้อความคำถามอาจต่างเล็กน้อยตามเวอร์ชันของ CLI ถ้าเผลอตอบ Overwrite = Yes ให้ copy index.html ของเราจากงาน Week 3 กลับมาทับ</p></div>
+      <label class="check"><input type="checkbox"> ทำขั้นนี้เสร็จแล้ว</label>
+    </div>
+  </article>
+
+  <article class="step" id="s1-5" data-title="อ่าน firebase.json">
+    <div class="num">1.5</div>
+    <div class="body">
+      <h4>เปิดดู firebase.json ให้เข้าใจ</h4>
+      <div class="term"><div class="tbar"><span>firebase.json</span></div><pre>{
+  <span class="q">"hosting"</span>: {
+    <span class="q">"public"</span>: <span class="a">"."</span>,
+    <span class="q">"ignore"</span>: [
+      <span class="a">"firebase.json"</span>,
+      <span class="a">"**/.*"</span>,
+      <span class="a">"**/node_modules/**"</span>
+    ]
+  }
+}</pre></div>
+      <div class="box why"><span class="lab">ทำไม</span><p><code>"public"</code> บอกว่าจะอัปโหลดโฟลเดอร์ไหน <code>"ignore"</code> คือรายการไฟล์ที่ไม่ต้องอัปโหลด เช่น ไฟล์ตั้งค่าเอง และไฟล์ที่ชื่อขึ้นต้นด้วยจุดอย่าง <code>.firebaserc</code> ซึ่งเป็นเรื่องของเครื่องเรา ไม่ใช่เนื้อหาเว็บ ถ้าตอบ public directory ผิดในขั้นก่อน แก้ค่าตรงนี้ได้เลยโดยไม่ต้อง init ใหม่</p></div>
+      <label class="check"><input type="checkbox"> ทำขั้นนี้เสร็จแล้ว</label>
+    </div>
+  </article>
+
+  <article class="step" id="s1-6" data-title="firebase deploy">
+    <div class="num">1.6</div>
+    <div class="body">
+      <h4>Deploy ขึ้น Server</h4>
+      <div class="term"><div class="tbar"><span>Terminal</span><button class="copy" type="button">คัดลอก</button></div><pre><span class="k">firebase</span> deploy --only hosting</pre></div>
+      <div class="term out"><div class="tbar"><span>ตัวอย่างผลลัพธ์</span></div><pre>=== Deploying to 'gad-yourname'...
+<span class="ok">✔</span> hosting[gad-yourname]: file upload complete
+<span class="ok">✔</span> Deploy complete!
+
+Hosting URL: https://gad-yourname.web.app</pre></div>
+      <div class="box why"><span class="lab">ทำไม</span><p>คำสั่งนี้ copy ไฟล์ทั้งหมดในโฟลเดอร์ขึ้น Server ของ Google แล้วกระจายไปยัง CDN ทั่วโลก <code>--only hosting</code> บอกให้ส่งเฉพาะส่วนเว็บ ไม่ไปแตะบริการอื่นของ Firebase</p></div>
+      <div class="box result"><span class="lab">ผลที่ควรเห็น</span><p>ได้ <b>Hosting URL</b> กด Ctrl แล้วคลิกลิงก์ใน Terminal เพื่อเปิด หน้าเว็บต้องเหมือนตอนเปิดด้วย Live Server ทุกอย่าง และมีรูปกุญแจ (HTTPS) ในช่อง URL</p></div>
+      <label class="check"><input type="checkbox"> ทำขั้นนี้เสร็จแล้ว</label>
+    </div>
+  </article>
+
+  <article class="step" id="s1-7" data-title="ทดสอบบนมือถือ + deploy ซ้ำ">
+    <div class="num">1.7</div>
+    <div class="body">
+      <h4>เปิดบนมือถือ แล้วลองแก้และ Deploy ซ้ำ</h4>
+      <ol class="do">
+        <li>ส่งลิงก์เข้ามือถือตัวเอง (เช่น ส่งใน LINE หาตัวเอง) แล้วเปิดดู</li>
+        <li>กลับมาที่ VS Code แก้ข้อความใน <code>&lt;h1&gt;</code> แล้วกด Ctrl + S</li>
+        <li>รีเฟรชลิงก์เดิม สังเกตว่ายังไม่เปลี่ยน</li>
+        <li>สั่ง <code>firebase deploy --only hosting</code> อีกครั้ง แล้วรีเฟรชด้วย Ctrl + Shift + R</li>
+      </ol>
+      <div class="box why"><span class="lab">ทำไม</span><p>การ Deploy คือการถ่าย "สำเนา" ไฟล์ขึ้นไป ณ เวลานั้น แก้ไฟล์ในเครื่องภายหลังจึงไม่ส่งผลกับเว็บจนกว่าจะ Deploy ใหม่ ส่วนการเปิดบนมือถือจริงคือการทดสอบ Responsive จาก Week 3 กับอุปกรณ์จริง ซึ่งแม่นกว่าโหมด F12</p></div>
+      <div class="box result"><span class="lab">ผลที่ควรเห็น</span><p>หลัง Deploy ครั้งที่สอง ข้อความ h1 บนเว็บเปลี่ยนตาม ทั้งบนคอมพิวเตอร์และมือถือ ใน Console ของ Firebase → Hosting จะเห็นประวัติการ Deploy 2 ครั้ง</p></div>
+      <label class="check"><input type="checkbox"> ทำขั้นนี้เสร็จแล้ว</label>
+    </div>
+  </article>
+</section>
+
+<!-- ================= PART 2 ================= -->
+<section class="part" id="part2" data-group="แบบที่ 2 · Vercel">
+  <div class="part-head"><span class="tag">แบบที่ 2</span><h2>Deploy ด้วย Vercel</h2></div>
+  <p class="part-intro">ทำ 2 ช่วง ช่วงแรกใช้ Vercel CLI ซึ่งคล้ายกับ Firebase ช่วงที่สองเชื่อมผ่าน GitHub ให้เว็บอัปเดตเองทุกครั้งที่ส่งโค้ดขึ้นไป ซึ่งเป็นวิธีที่ใช้ในการทำงานจริง</p>
+
+  <h3 class="sub-part">2A · Deploy ด้วย Vercel CLI</h3>
+
+  <article class="step" id="s2-1" data-title="สมัคร GitHub + Vercel">
+    <div class="num">2.1</div>
+    <div class="body">
+      <h4>สมัคร GitHub แล้วสมัคร Vercel ด้วยบัญชี GitHub</h4>
+      <ol class="do">
+        <li>สมัครที่ <a href="https://github.com" target="_blank" rel="noopener">github.com</a> และยืนยันอีเมลให้เรียบร้อย</li>
+        <li>ไปที่ <a href="https://vercel.com/signup" target="_blank" rel="noopener">vercel.com/signup</a> เลือกแพ็กเกจ <b>Hobby</b> แล้วกด <b>Continue with GitHub</b></li>
+      </ol>
+      <div class="box why"><span class="lab">ทำไม</span><p>ในช่วง 2B เราจะให้ Vercel ดึงโค้ดจาก GitHub ไป Deploy เอง ถ้าสมัคร Vercel ด้วย GitHub ตั้งแต่แรก สองบัญชีจะเชื่อมกันอยู่แล้ว ไม่ต้องตั้งค่าเพิ่ม แพ็กเกจ Hobby ใช้ฟรีสำหรับงานส่วนตัว</p></div>
+      <div class="box result"><span class="lab">ผลที่ควรเห็น</span><p>เข้า Dashboard ของ Vercel ได้ มุมซ้ายบนเป็นชื่อบัญชี GitHub ของเรา</p></div>
+      <label class="check"><input type="checkbox"> ทำขั้นนี้เสร็จแล้ว</label>
+    </div>
+  </article>
+
+  <article class="step" id="s2-2" data-title="ติดตั้ง Vercel CLI">
+    <div class="num">2.2</div>
+    <div class="body">
+      <h4>ติดตั้ง Vercel CLI และ Login</h4>
+      <div class="term"><div class="tbar"><span>Terminal</span><button class="copy" type="button">คัดลอก</button></div><pre><span class="k">npm</span> install -g vercel
+<span class="k">vercel</span> login</pre></div>
+      <p>เลือก <b>Continue with GitHub</b> แล้วยืนยันในเบราว์เซอร์</p>
+      <div class="box why"><span class="lab">ทำไม</span><p>หลักการเดียวกับ Firebase ขั้น 1.1–1.2 คือติดตั้งเครื่องมือสั่งงาน แล้วยืนยันตัวตนให้ CLI มีสิทธิ์อัปโหลดเข้าบัญชีของเรา</p></div>
+      <div class="box result"><span class="lab">ผลที่ควรเห็น</span><p>Terminal แจ้งว่า Login สำเร็จ (ข้อความขึ้นต้นด้วย Congratulations หรือ Success)</p></div>
+      <label class="check"><input type="checkbox"> ทำขั้นนี้เสร็จแล้ว</label>
+    </div>
+  </article>
+
+  <article class="step" id="s2-3" data-title="vercel (Preview)">
+    <div class="num">2.3</div>
+    <div class="body">
+      <h4>Deploy ครั้งแรกด้วยคำสั่ง vercel</h4>
+      <p>ใน Terminal ที่อยู่ในโฟลเดอร์ <code>my-site</code> สั่ง</p>
+      <div class="term"><div class="tbar"><span>Terminal</span><button class="copy" type="button">คัดลอก</button></div><pre><span class="k">vercel</span></pre></div>
+      <div class="tbl"><table>
+        <tr><th style="width:40%">คำถาม</th><th style="width:18%">ตอบ</th><th>ทำไมตอบแบบนี้</th></tr>
+        <tr><td>Set up and deploy "…/my-site"?</td><td><code>yes</code></td><td>ยืนยันว่าจะ Deploy โฟลเดอร์ที่อยู่ตอนนี้</td></tr>
+        <tr><td>Which scope should contain your project?</td><td>ชื่อบัญชีเรา</td><td>เลือกว่าโปรเจกต์อยู่ในบัญชีไหน</td></tr>
+        <tr><td>Link to existing project?</td><td><code>no</code></td><td>ยังไม่เคยมีโปรเจกต์นี้บน Vercel ให้สร้างใหม่</td></tr>
+        <tr><td>What's your project's name?</td><td><code>my-site</code> หรือชื่ออื่น</td><td>ชื่อนี้จะเป็นชื่อในลิงก์ <code>ชื่อ.vercel.app</code></td></tr>
+        <tr><td>In which directory is your code located?</td><td><code>./</code></td><td>index.html อยู่ในโฟลเดอร์นี้เลย ไม่ได้อยู่ในโฟลเดอร์ย่อย</td></tr>
+        <tr><td>Want to modify these settings?</td><td><code>no</code></td><td>เว็บ HTML ธรรมดาไม่ต้อง Build อะไร ใช้ค่าที่ Vercel ตรวจเจอได้เลย</td></tr>
+      </table></div>
+      <div class="box why"><span class="lab">ทำไม</span><p>คำถามจะถามเฉพาะครั้งแรก คำตอบถูกเก็บไว้ในโฟลเดอร์ใหม่ชื่อ <code>.vercel</code> ในเครื่อง ครั้งต่อไปพิมพ์แค่ <code>vercel</code> ก็ Deploy ได้ทันที คำสั่งนี้สร้าง <b>Preview</b> คือเว็บเวอร์ชันทดสอบที่ยังไม่ใช่ลิงก์หลัก</p></div>
+      <div class="box result"><span class="lab">ผลที่ควรเห็น</span><p>ได้ลิงก์ Preview หน้าตาประมาณ <code>https://my-site-xxxxxxx-ชื่อบัญชี.vercel.app</code> ที่มีรหัสสุ่มปนอยู่</p></div>
+      <div class="box warn"><span class="lab">ระวัง</span><p>ข้อความคำถามอาจต่างเล็กน้อยตามเวอร์ชัน ถ้าชื่อโปรเจกต์ซ้ำกับคนอื่น Vercel จะเติมคำต่อท้ายให้ ลิงก์ Preview บางครั้งต้อง Login Vercel ก่อนจึงเปิดได้ ซึ่งเป็นเรื่องปกติ</p></div>
+      <label class="check"><input type="checkbox"> ทำขั้นนี้เสร็จแล้ว</label>
+    </div>
+  </article>
+
+  <article class="step" id="s2-4" data-title="vercel --prod">
+    <div class="num">2.4</div>
+    <div class="body">
+      <h4>ขึ้นลิงก์หลักด้วย vercel --prod</h4>
+      <div class="term"><div class="tbar"><span>Terminal</span><button class="copy" type="button">คัดลอก</button></div><pre><span class="k">vercel</span> --prod</pre></div>
+      <div class="box why"><span class="lab">ทำไม</span><p>Vercel แยกเว็บเป็น 2 ระดับ <b>Preview</b> มีลิงก์ใหม่ทุกครั้ง ใช้ทดสอบหรือส่งให้เพื่อนดูก่อน ส่วน <b>Production</b> คือลิงก์หลักที่สั้นและไม่เปลี่ยน แยกกันแบบนี้เพื่อไม่ให้งานที่ยังไม่เสร็จไปโผล่บนเว็บจริง</p></div>
+      <div class="box result"><span class="lab">ผลที่ควรเห็น</span><p>ได้ลิงก์ Production เช่น <code>https://my-site.vercel.app</code> เปิดบนมือถือแล้วหน้าตาเหมือนลิงก์ Firebase ทุกอย่าง เพราะเป็นไฟล์ชุดเดียวกัน</p></div>
+      <label class="check"><input type="checkbox"> ทำขั้นนี้เสร็จแล้ว</label>
+    </div>
+  </article>
+
+  <h3 class="sub-part">2B · เชื่อมเครื่องเรา → GitHub → Vercel (Auto Deploy)</h3>
+
+  <article class="step" id="s2-5" data-title="ติดตั้ง Git">
+    <div class="num">2.5</div>
+    <div class="body">
+      <h4>ติดตั้ง Git และตั้งชื่อผู้ใช้</h4>
+      <ol class="do">
+        <li>ดาวน์โหลดจาก <a href="https://git-scm.com" target="_blank" rel="noopener">git-scm.com</a> ติดตั้งโดยกด Next ตามค่าเริ่มต้น แล้วปิดเปิด VS Code ใหม่</li>
+        <li>ตั้งชื่อและอีเมล (ใช้อีเมลเดียวกับบัญชี GitHub)</li>
+      </ol>
+      <div class="term"><div class="tbar"><span>Terminal</span><button class="copy" type="button">คัดลอก</button></div><pre><span class="k">git</span> --version
+<span class="k">git</span> config --global user.name <span class="a">"Your Name"</span>
+<span class="k">git</span> config --global user.email <span class="a">"you@email.com"</span></pre></div>
+      <div class="box why"><span class="lab">ทำไม</span><p><b>Git</b> คือโปรแกรมในเครื่องที่บันทึกเวอร์ชันของไฟล์ เหมือนจุด Save ในเกมที่ย้อนกลับได้ ส่วน <b>GitHub</b> คือเว็บที่เก็บงานที่บันทึกไว้แบบออนไลน์ ชื่อและอีเมลจะติดไปกับทุกการบันทึก เพื่อบอกว่าใครเป็นคนแก้</p></div>
+      <div class="box result"><span class="lab">ผลที่ควรเห็น</span><p>คำสั่งแรกแสดงเวอร์ชันของ Git คำสั่ง config ไม่แสดงอะไร (ไม่มีข้อความ = สำเร็จ)</p></div>
+      <label class="check"><input type="checkbox"> ทำขั้นนี้เสร็จแล้ว</label>
+    </div>
+  </article>
+
+  <article class="step" id="s2-6" data-title="สร้าง .gitignore">
+    <div class="num">2.6</div>
+    <div class="body">
+      <h4>สร้างไฟล์ .gitignore</h4>
+      <p>ใน my-site สร้างไฟล์ใหม่ชื่อ <code>.gitignore</code> (มีจุดนำหน้า ไม่มีนามสกุล) แล้วใส่</p>
+      <div class="term"><div class="tbar"><span>.gitignore</span><button class="copy" type="button">คัดลอก</button></div><pre>.vercel
+.firebase</pre></div>
+      <div class="box why"><span class="lab">ทำไม</span><p>โฟลเดอร์ <code>.vercel</code> และ <code>.firebase</code> เป็นข้อมูลตั้งค่าและ cache ของเครื่องเราเอง ไม่ใช่เนื้อหาเว็บ ไฟล์ <code>.gitignore</code> บอก Git ว่าไม่ต้องส่งสิ่งเหล่านี้ขึ้น GitHub เพื่อให้ Repository สะอาด และไม่ให้การตั้งค่าของเครื่องเราไปปนกับระบบของ Vercel</p></div>
+      <div class="box result"><span class="lab">ผลที่ควรเห็น</span><p>ในแท็บ Source Control ของ VS Code โฟลเดอร์ทั้งสองจะไม่อยู่ในรายการไฟล์ที่ต้องบันทึก</p></div>
+      <label class="check"><input type="checkbox"> ทำขั้นนี้เสร็จแล้ว</label>
+    </div>
+  </article>
+
+  <article class="step" id="s2-7" data-title="Publish to GitHub">
+    <div class="num">2.7</div>
+    <div class="body">
+      <h4>ส่งโปรเจกต์ขึ้น GitHub ด้วยปุ่มใน VS Code</h4>
+      <ol class="do">
+        <li>เปิดแท็บ <b>Source Control</b> (ไอคอนกิ่งไม้ด้านซ้าย หรือ Ctrl + Shift + G)</li>
+        <li>กด <b>Publish to GitHub</b> แล้ว Login GitHub ในหน้าต่างที่เด้งขึ้นมา</li>
+        <li>เลือก <b>Publish to GitHub public repository</b> และใช้ชื่อ <code>my-site</code></li>
+        <li>ถ้าถามว่าจะใส่ไฟล์ไหนบ้าง ให้เลือกทั้งหมด (โฟลเดอร์ใน .gitignore จะถูกข้ามให้อยู่แล้ว)</li>
+      </ol>
+      <p>หรือถ้าอยากใช้คำสั่งเอง ให้สร้าง Repository เปล่าชื่อ my-site บน github.com ก่อน (ไม่ต้องติ๊ก Add a README) แล้วสั่ง</p>
+      <div class="term"><div class="tbar"><span>Terminal</span><button class="copy" type="button">คัดลอก</button></div><pre><span class="k">git</span> init
+<span class="k">git</span> add .
+<span class="k">git</span> commit -m <span class="a">"first deploy"</span>
+<span class="k">git</span> branch -M main
+<span class="k">git</span> remote add origin <span class="a">https://github.com/ชื่อบัญชี/my-site.git</span>
+<span class="k">git</span> push -u origin main</pre></div>
+      <div class="box why"><span class="lab">ทำไม</span><p>ปุ่ม Publish ทำทุกคำสั่งข้างบนให้ในคลิกเดียว: <code>init</code> เริ่มให้ Git ดูแลโฟลเดอร์ <code>add</code> เลือกไฟล์ <code>commit</code> บันทึกเวอร์ชันพร้อมข้อความ <code>remote</code> บอกที่อยู่บน GitHub และ <code>push</code> ส่งขึ้นไป GitHub จะเป็น "สะพาน" ที่ Vercel มาดึงโค้ดไป Deploy</p></div>
+      <div class="box result"><span class="lab">ผลที่ควรเห็น</span><p>เปิด <code>github.com/ชื่อบัญชี/my-site</code> แล้วเห็นไฟล์ index.html, css, images ครบ</p></div>
+      <label class="check"><input type="checkbox"> ทำขั้นนี้เสร็จแล้ว</label>
+    </div>
+  </article>
+
+  <article class="step" id="s2-8" data-title="Import เข้า Vercel">
+    <div class="num">2.8</div>
+    <div class="body">
+      <h4>Import Repository เข้า Vercel</h4>
+      <ol class="do">
+        <li>ใน Vercel Dashboard กด <b>Add New…</b> → <b>Project</b></li>
+        <li>ในหัวข้อ Import Git Repository หา <code>my-site</code> แล้วกด <b>Import</b></li>
+        <li>ตั้งชื่อโปรเจกต์ เช่น <code>my-site-git</code> (ห้ามซ้ำกับโปรเจกต์ที่สร้างในขั้น 2.3)</li>
+        <li>Framework Preset เลือก <b>Other</b> ส่วน Build Command ปล่อยว่าง</li>
+        <li>กด <b>Deploy</b></li>
+      </ol>
+      <div class="box why"><span class="lab">ทำไม</span><p>การ Import คือการบอก Vercel ว่า "คอยเฝ้า Repository นี้ไว้" เลือก Other เพราะเว็บเราเป็น HTML ธรรมดา ไม่ได้ใช้ Framework อย่าง React หรือ Next.js จึงไม่มีขั้นตอน Build ให้ Vercel เสิร์ฟไฟล์ตามที่มีได้เลย</p></div>
+      <div class="box result"><span class="lab">ผลที่ควรเห็น</span><p>หน้า Congratulations พร้อมภาพตัวอย่างเว็บ และลิงก์ <code>ชื่อโปรเจกต์.vercel.app</code></p></div>
+      <div class="box warn"><span class="lab">ระวัง</span><p>ถ้าไม่เห็น Repository ของตัวเอง ให้กด Adjust GitHub App Permissions แล้วอนุญาตให้ Vercel เข้าถึง Repo my-site</p></div>
+      <label class="check"><input type="checkbox"> ทำขั้นนี้เสร็จแล้ว</label>
+    </div>
+  </article>
+
+  <article class="step" id="s2-9" data-title="ทดสอบ Auto Deploy">
+    <div class="num">2.9</div>
+    <div class="body">
+      <h4>ทดสอบ Auto Deploy</h4>
+      <ol class="do">
+        <li>แก้ข้อความใน <code>&lt;h1&gt;</code> หรือสีใน style.css แล้วกด Ctrl + S</li>
+        <li>แท็บ Source Control พิมพ์ข้อความว่าแก้อะไร เช่น <code>change title</code> แล้วกด <b>Commit</b></li>
+        <li>กด <b>Sync Changes</b> (เทียบเท่าคำสั่ง <code>git push</code>)</li>
+        <li>ดูแท็บ <b>Deployments</b> ใน Vercel แล้วรีเฟรชลิงก์บนมือถือ</li>
+      </ol>
+      <div class="box why"><span class="lab">ทำไม</span><p>เมื่อโค้ดใหม่ถูก push ไปที่ branch <code>main</code> GitHub จะแจ้ง Vercel ทันที แล้ว Vercel ดึงโค้ดล่าสุดไป Deploy เป็น Production ให้เอง เราจึงไม่ต้องพิมพ์คำสั่ง Deploy อีก และทุกเวอร์ชันมีประวัติใน GitHub ย้อนกลับได้เสมอ</p></div>
+      <div class="box result"><span class="lab">ผลที่ควรเห็น</span><p>ในไม่กี่วินาทีจะมี Deployment ใหม่ขึ้นสถานะ <b>Ready</b> และเว็บบนมือถือเปลี่ยนตามที่แก้ โดยที่เราไม่ได้พิมพ์คำสั่ง deploy เลย</p></div>
+      <label class="check"><input type="checkbox"> ทำขั้นนี้เสร็จแล้ว</label>
+    </div>
+  </article>
+</section>
+
+<!-- ================= TROUBLESHOOT ================= -->
+<section class="part" id="trouble" data-group="ช่วยเหลือ">
+  <div class="part-head"><span class="tag">แก้ปัญหา</span><h2>เจอปัญหา ดูตรงนี้ก่อน</h2></div>
+  <div class="tbl"><table>
+    <tr><th style="width:30%">อาการ</th><th style="width:33%">สาเหตุ</th><th>วิธีแก้</th></tr>
+    <tr><td>เปิดเว็บแล้วเจอหน้า Welcome ของ Firebase</td><td>ตอบ Overwrite index.html = Yes</td><td>copy index.html ของเรากลับมา แล้ว Deploy ใหม่</td></tr>
+    <tr><td>404 Not Found</td><td>ไม่มี index.html ในโฟลเดอร์ที่อัปโหลด หรือ public directory ผิด</td><td>ตรวจชื่อไฟล์ (ขั้น 0.2) และค่า <code>"public"</code> ใน firebase.json</td></tr>
+    <tr><td>รูปหรือ CSS ไม่ขึ้น แต่ในเครื่องขึ้น</td><td>path แบบ <code>C:\</code> หรือตัวพิมพ์เล็ก-ใหญ่ไม่ตรง</td><td>ทำขั้น 0.3 ใหม่ แล้ว Deploy หรือ push อีกครั้ง</td></tr>
+    <tr><td><code>'firebase' is not recognized</code> หรือ <code>'vercel' is not recognized</code></td><td>Terminal ยังไม่รู้จักคำสั่งที่เพิ่งติดตั้ง</td><td>ปิดเปิด VS Code ใหม่ ถ้ายังไม่ได้ให้ติดตั้งซ้ำด้วย npm install -g</td></tr>
+    <tr><td><code>running scripts is disabled</code></td><td>PowerShell ของ Windows บล็อกสคริปต์</td><td>เปลี่ยน Terminal เป็น Command Prompt (ขั้น 0.5)</td></tr>
+    <tr><td>แก้แล้วเว็บไม่เปลี่ยน</td><td>ยังไม่ได้ Deploy หรือ push หรือเบราว์เซอร์จำของเก่าไว้</td><td>Deploy หรือ Sync ใหม่ แล้วกด Ctrl + Shift + R</td></tr>
+    <tr><td>Vercel ไม่ Deploy หลัง push</td><td>push ไป branch อื่นที่ไม่ใช่ main หรือยังไม่ได้กด Sync</td><td>ดูใน GitHub ว่า Commit ล่าสุดขึ้นไปแล้ว และอยู่ที่ branch main</td></tr>
+  </table></div>
+</section>
+
+<!-- ================= SUBMIT ================= -->
+<section class="submit" id="submit" data-group="ส่งงาน">
+  <h2>สิ่งที่ต้องส่ง</h2>
+  <ol>
+    <li>ลิงก์ Firebase: <code>https://project-id.web.app</code></li>
+    <li>ลิงก์ Vercel ที่เชื่อม GitHub: <code>https://ชื่อโปรเจกต์.vercel.app</code></li>
+    <li>ลิงก์ GitHub: <code>https://github.com/ชื่อบัญชี/my-site</code> (ต้องมีอย่างน้อย 2 Commit จากขั้น 2.9)</li>
+    <li>Selfie พร้อมมือถือที่เปิดเว็บของตัวเองผ่าน URL จริง ลงใน facebook <span class="ph">[กลุ่ม / แฮชแท็กวิชา]</span></li>
+  </ol>
+  <p style="margin:20px 0 0">ส่งที่ <span class="ph">[ช่องทางส่งงาน]</span> · กำหนดส่ง <span class="ph">[วัน / เวลา]</span></p>
+</section>
+
+<footer>
+  <span>GAD23867-1 Creative coding · Week 4 · WICHAI WEDCHAYANON</span>
+  <button class="reset" type="button" id="resetBtn">ล้างความคืบหน้า</button>
+</footer>
+</main>
+</div>
+
+<script>
+(function(){
+  var KEY = 'gad23867-w4-deploy-progress';
+  var steps = Array.prototype.slice.call(document.querySelectorAll('.step'));
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch(e) { saved = {}; }
+
+  // build TOC
+  var toc = document.getElementById('tocList');
+  var tocLinks = {};
+  document.querySelectorAll('[data-group]').forEach(function(group){
+    var g = document.createElement('li'); g.className = 'grp'; g.textContent = group.getAttribute('data-group'); toc.appendChild(g);
+    var inner = group.querySelectorAll('.step');
+    if (!inner.length) {
+      var li = document.createElement('li'); var a = document.createElement('a');
+      a.href = '#' + group.id; a.textContent = group.querySelector('h2').textContent; li.appendChild(a); toc.appendChild(li);
+    }
+    inner.forEach(function(s){
+      var li = document.createElement('li'); var a = document.createElement('a');
+      a.href = '#' + s.id;
+      var n = document.createElement('span'); n.textContent = s.querySelector('.num').textContent; n.style.fontFamily = 'var(--mono)';
+      var t = document.createElement('span'); t.textContent = s.getAttribute('data-title');
+      a.appendChild(n); a.appendChild(t); li.appendChild(a); toc.appendChild(li);
+      tocLinks[s.id] = a;
+    });
+  });
+
+  function update(){
+    var done = 0;
+    steps.forEach(function(s){
+      var on = s.querySelector('.check input').checked;
+      s.classList.toggle('is-done', on);
+      if (tocLinks[s.id]) tocLinks[s.id].classList.toggle('done', on);
+      if (on) done++;
+    });
+    document.getElementById('barFill').style.width = (done / steps.length * 100) + '%';
+    document.getElementById('count').textContent = done + ' / ' + steps.length + ' ขั้น';
+  }
+
+  steps.forEach(function(s){
+    var box = s.querySelector('.check input');
+    box.checked = !!saved[s.id];
+    box.addEventListener('change', function(){
+      saved[s.id] = box.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch(e) {}
+      update();
+    });
+  });
+  update();
+
+  document.getElementById('resetBtn').addEventListener('click', function(){
+    saved = {};
+    try { localStorage.removeItem(KEY); } catch(e) {}
+    steps.forEach(function(s){ s.querySelector('.check input').checked = false; });
+    update();
+  });
+
+  // copy buttons
+  document.querySelectorAll('.copy').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var text = btn.closest('.term').querySelector('pre').innerText;
+      function ok(){ btn.textContent = 'คัดลอกแล้ว'; btn.classList.add('copied'); setTimeout(function(){ btn.textContent = 'คัดลอก'; btn.classList.remove('copied'); }, 1600); }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(ok, function(){ fallback(text); ok(); });
+      } else { fallback(text); ok(); }
+    });
+  });
+  function fallback(text){
+    var ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch(e) {}
+    document.body.removeChild(ta);
+  }
+})();
+</script>
+</body>
+</html>
